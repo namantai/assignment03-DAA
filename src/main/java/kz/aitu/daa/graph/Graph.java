@@ -116,8 +116,8 @@ public final class Graph {
             } else {
                 throw new IOException("Graph kind must be directed or undirected");
             }
-            if (m < 0) {
-                throw new IOException("edge count must be non-negative");
+            if (n < 0 || m < 0) {
+                throw new IOException("vertex and edge counts must be non-negative");
             }
 
             Graph graph = new Graph(n, directed);
@@ -176,4 +176,3 @@ public final class Graph {
         }
     }
 }
-

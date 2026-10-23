@@ -11,9 +11,7 @@ public final class GraphGenerator {
     private GraphGenerator() { }
 
     public static Graph undirected(int n, int m) {
-        if (n == 0 && m != 0) {
-            throw new IllegalArgumentException("an empty graph cannot contain edges");
-        }
+        validateSize(n, m);
         if (n > 0 && m < n - 1) {
             throw new IllegalArgumentException("connected generator needs at least n - 1 edges");
         }
@@ -36,6 +34,7 @@ public final class GraphGenerator {
     }
 
     public static Graph directed(int n, int m) {
+        validateSize(n, m);
         Random random = new Random(SEED);
         Graph graph = new Graph(n, true);
         addRandomDirectedEdges(graph, m, random, null);
@@ -43,6 +42,7 @@ public final class GraphGenerator {
     }
 
     public static Graph dag(int n, int m) {
+        validateSize(n, m);
         Random random = new Random(SEED);
         int[] rank = shuffledIdentity(n, random);
         Graph graph = new Graph(n, true);
@@ -67,9 +67,6 @@ public final class GraphGenerator {
     private static void addRandomDirectedEdges(
             Graph graph, int edgeCount, Random random, int[] rank) {
         int n = graph.vertexCount();
-        if (n == 0 && edgeCount != 0) {
-            throw new IllegalArgumentException("an empty graph cannot contain edges");
-        }
         for (int edge = 0; edge < edgeCount; edge++) {
             int first = random.nextInt(n);
             int second;
@@ -88,5 +85,13 @@ public final class GraphGenerator {
     private static int randomWeight(Random random) {
         return 1 + random.nextInt(1000);
     }
-}
 
+    private static void validateSize(int n, int m) {
+        if (n < 0 || m < 0) {
+            throw new IllegalArgumentException("vertex and edge counts must be non-negative");
+        }
+        if (n < 2 && m > 0) {
+            throw new IllegalArgumentException("non-loop edges require at least two vertices");
+        }
+    }
+}

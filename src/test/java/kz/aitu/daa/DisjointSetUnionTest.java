@@ -8,6 +8,8 @@ import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DisjointSetUnionTest {
     @Test
@@ -43,12 +45,29 @@ class DisjointSetUnionTest {
                 int y = random.nextInt(n);
                 assertEquals(label[x] == label[y], dsu.find(x) == dsu.find(y));
             }
+            assertEquals(n - successful, dsu.components(), "step " + step);
         }
 
         long distinct = java.util.Arrays.stream(label).distinct().count();
         assertEquals(distinct, dsu.components());
         assertEquals(successful, metrics.successfulUnions());
-        assertTrue(metrics.findCalls() >= 2_000L * 2);
+        assertEquals(2_000L * 22, metrics.findCalls());
+    }
+
+    @Test
+    void countsOnlySuccessfulUnionsAndHandlesEmptySets() {
+        Metrics metrics = new Metrics();
+        DisjointSetUnion dsu = new DisjointSetUnion(3, metrics);
+        assertTrue(dsu.union(0, 1));
+        assertFalse(dsu.union(1, 0));
+        assertFalse(dsu.union(2, 2));
+        assertEquals(2, dsu.components());
+        assertEquals(6, metrics.findCalls());
+        assertEquals(1, metrics.successfulUnions());
+        assertEquals(7, metrics.dsuOps());
+        assertEquals(0, DisjointSetUnion.makeSet(0).components());
+        assertEquals(1, DisjointSetUnion.makeSet(1).components());
+        assertThrows(IllegalArgumentException.class, () -> dsu.find(-1));
+        assertThrows(IllegalArgumentException.class, () -> dsu.find(3));
     }
 }
-

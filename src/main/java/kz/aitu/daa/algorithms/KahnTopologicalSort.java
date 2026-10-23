@@ -34,7 +34,7 @@ public final class KahnTopologicalSort {
     }
 
     public static boolean isValid(Graph graph, List<Integer> order) {
-        if (order.size() != graph.vertexCount()) {
+        if (!graph.isDirected() || order.size() != graph.vertexCount()) {
             return false;
         }
         int[] position = new int[graph.vertexCount()];
@@ -61,4 +61,3 @@ public final class KahnTopologicalSort {
         }
     }
 }
-

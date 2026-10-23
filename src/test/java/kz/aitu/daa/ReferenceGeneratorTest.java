@@ -8,6 +8,10 @@ import kz.aitu.daa.metrics.Metrics;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.function.BiFunction;
+import kz.aitu.daa.graph.Graph;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -23,5 +27,21 @@ class ReferenceGeneratorTest {
         long sum = Arrays.stream(
                 DagShortestPaths.compute(GraphGenerator.dag(n, m), new Metrics()).distances()).sum();
         assertEquals(396_274, sum);
+    }
+
+    @Test
+    void validatesSizesAndSupportsEmptyAndSingletonGraphs() {
+        List<BiFunction<Integer, Integer, Graph>> generators = List.of(
+                GraphGenerator::undirected, GraphGenerator::directed, GraphGenerator::dag);
+        for (BiFunction<Integer, Integer, Graph> generator : generators) {
+            assertThrows(IllegalArgumentException.class, () -> generator.apply(-1, 0));
+            assertThrows(IllegalArgumentException.class, () -> generator.apply(2, -1));
+            assertThrows(IllegalArgumentException.class, () -> generator.apply(0, 1));
+            assertThrows(IllegalArgumentException.class, () -> generator.apply(1, 1));
+            assertEquals(0, generator.apply(0, 0).edgeCount());
+            assertEquals(1, generator.apply(1, 0).vertexCount());
+            assertEquals(generator.apply(8, 30).edges(), generator.apply(8, 30).edges());
+        }
+        assertThrows(IllegalArgumentException.class, () -> GraphGenerator.undirected(5, 3));
     }
 }
