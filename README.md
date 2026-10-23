@@ -127,25 +127,3 @@ The graph answers and mandatory scan counts are exact. Sort/heap comparison
 counts may depend on the JDK implementation, and wall-clock times are not
 expected to reproduce bit-for-bit.
 
-## Submission and Git status
-
-The repository has `main`, `feature/dsu`, `feature/mst`, `feature/scc`,
-`feature/paths`, and `feature/metrics`. The pre-existing `v1.0` tag points to
-commit `3e25683`, before the audit fixes and structure refactoring. It has
-deliberately not been moved. No GitHub remote is configured and nothing has
-been pushed.
-
-Before submitting, publish the repository, add its real GitHub URL, resolve the
-release-tag target, and create `DAA_Assignment3_name_surname_group.zip` with your
-actual name and group. Include source, tests, data, results, scripts, README and
-the report; omit `target/`, `.venv/` and temporary files. Upload the ZIP to Moodle.
-Tarjan SCC and condensation/critical-path bonuses are not implemented; they
-are separate from the 100-point core requirements.
-
-## AI-use acknowledgement
-
-OpenAI Codex was used to help scaffold the project, implement and review the
-algorithms, simplify package structure and benchmark code, write tests and
-documentation, and generate the plotting script.
-All benchmark reference values are checked by executable code, and the submitted
-author is responsible for reviewing, understanding, and defending the solution.
