@@ -50,8 +50,8 @@ counts alone do not measure parent-pointer work or prove that bound.
 
 Let W = dsuOps + edgeScans + comparisons. This is a work indicator, not every
 CPU instruction. We divide W by E log2 E for MST algorithms and by V+E for
-traversals. scripts/analyze_results.py validates results.csv and calculates
-results/analysis.json. Each column below is a measured size.
+traversals. scripts/analyze_results.py validates results.csv and prints the
+normalized counters and slopes. Each column below is a measured size.
 
 | Algorithm / density | 1,000 | 3,162 | 10,000 | 31,623 | 100,000 |
 |---|---:|---:|---:|---:|---:|
@@ -196,14 +196,15 @@ more heap comparisons in these runs.
 | 100,000 | 2,000,000 | 3,056,681 | 1 | 23,512,087 |
 
 All reference values and scan checks passed on 23 October 2026 using OpenJDK
-21.0.12.1, Linux amd64, maximum heap 3,928 MiB. Each CSV time is the median
-of five algorithm runs; runs.csv preserves all 250 raw samples.
+21.0.12.1, Linux amd64, maximum heap 3,072 MiB. Each CSV time is the median
+of five algorithm runs; the five samples are sorted in memory and only the
+middle value is written to results.csv.
 Generation, validation and aggregation are outside the timer; initialization,
 reversal and internal topological sorting are inside. No separate warm-up is
-used, so JIT effects can dominate small cases: sparse Kahn took 1.532 ms at
-V=1,000 but 0.695 ms at V=3,162. At the largest dense input, Kruskal took
-586.893 ms, Prim 1,791.492 ms, Kosaraju 516.236 ms, Kahn 105.236 ms and
-DAG shortest paths 193.222 ms. Hardware, JVM, GC and background load change
+used, so JIT effects can dominate small cases: sparse Kahn took 1.937 ms at
+V=1,000 but 0.647 ms at V=3,162. At the largest dense input, Kruskal took
+678.230 ms, Prim 2,210.110 ms, Kosaraju 604.981 ms, Kahn 140.265 ms and
+DAG shortest paths 109.590 ms. Hardware, JVM, GC and background load change
 times; counters are the main evidence, and timing cannot establish a universal winner.
 
 All 37 JUnit cases passed: randomized DSU, 100 connected MST comparisons,
@@ -211,4 +212,5 @@ All 37 JUnit cases passed: randomized DSU, 100 connected MST comparisons,
 topological and cycle checks, 100 DAG/Bellman-Ford comparisons with full path
 validation, malformed input and boundary cases. A 100,000-vertex path and cycle
 each completed with explicit depth 100,000. The benchmark checks every run's
-result and all counters; Python independently checks the CSV and medians.
+result and all counters; Python independently checks the CSV references,
+scan counts and DSU-call relation, but cannot reconstruct discarded timings.

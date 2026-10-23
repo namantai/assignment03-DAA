@@ -10,7 +10,6 @@ deterministic benchmarks, tests, plots, and a report.
 - JDK 17 or newer
 - Maven 3.9 or newer
 - Python 3.10+ with Matplotlib (only for regenerating plots)
-- ReportLab 4 (optional: regenerate the included five-page PDF)
 
 ## Build and test
 
@@ -40,37 +39,37 @@ mvn -q compile exec:java
 ```
 
 This command runs five timed repetitions for every algorithm/configuration,
-checks all reference values, and writes `results/results.csv` (50 rows) and
-`results/runs.csv` (250 raw nanosecond samples). The complete audit used a JVM
-with a maximum heap of 3,928 MiB. A 3 GiB heap is a practical setting for the
-largest dense input; JVM and GC choices affect the memory needed:
+checks all reference values, and writes only `results/results.csv` (50 rows).
+The five measurements stay in a local array; its middle value after sorting
+is the median. No separate timing CSV is created. A 3 GiB heap is a practical
+setting for the largest dense input; JVM and GC choices affect the memory needed:
 
 ```bash
 MAVEN_OPTS="-Xmx3g" mvn -q compile exec:java
 ```
 
-Validate every CSV reference and median, and regenerate the three plots:
+Validate the CSV results and counters, and regenerate the three plots:
 
 ```bash
 python3 scripts/analyze_results.py
 python3 scripts/plot_results.py
 ```
 
-The validator also writes `results/analysis.json` with per-size normalized
-counters and least-squares slopes. Plots are made only after validation succeeds.
-For a fresh Python environment, install optional artifact dependencies:
+The validator prints per-size normalized counters, least-squares slopes and
+times without creating additional files. It cannot independently reconstruct
+the five timings from the median alone. Plots are made only after validation
+succeeds. For a fresh Python environment, install Matplotlib:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r scripts/requirements.txt
+.venv/bin/python scripts/analyze_results.py
 .venv/bin/python scripts/plot_results.py
-.venv/bin/python scripts/render_report.py
 ```
 
-The PDF is generated from `REPORT.md` at `output/pdf/REPORT.pdf`; its four page
-breaks produce five A4 pages. The committed report contains the audited run's
-times. After rerunning the benchmark, use `results/analysis.json` to update the
-report's measured tables and timing paragraph before rendering it again.
+`REPORT.md` is the only report; a duplicate PDF is not needed. After rerunning
+the benchmark, use the analysis script's output to update the report's measured
+tables and timing paragraph. Timings naturally change between runs.
 
 ## Input format
 
@@ -89,17 +88,21 @@ negative weights.
 ## Project layout
 
 ```text
-src/main/java/kz/aitu/daa/
+src/main/java/daa/
+  algo/        MST, SCC, topological sort, shortest paths and their results
+  bench/       exact Random(42) generators and BenchmarkRunner
+  ds/          DisjointSetUnion
   graph/       shared graph representation and parser
-  algorithms/  DSU, MST, SCC, topological sort, shortest paths
   metrics/     operation counters
-  benchmark/   exact Random(42) generators and self-checking benchmark
-src/test/java/ JUnit 5 cross-checks and stack-safety test
-data/          small input graphs
-results/       reproducible CSV and PNG plots
-scripts/       plot generator
-REPORT.md      analysis and correctness arguments
-output/pdf/    five-page printable report
+src/test/java/daa/  JUnit 5 cross-checks and stack-safety tests
+data/              four small input graphs
+results/
+  results.csv      50 rows, one median per algorithm/configuration
+  plots/           three PNG plots
+scripts/           CSV analysis, plot generator and Python requirements
+pom.xml            Maven build; main class daa.bench.BenchmarkRunner
+README.md          build, test and demonstration instructions
+REPORT.md          analysis and correctness arguments
 ```
 
 ## Reproducibility
@@ -128,9 +131,9 @@ expected to reproduce bit-for-bit.
 
 The repository has `main`, `feature/dsu`, `feature/mst`, `feature/scc`,
 `feature/paths`, and `feature/metrics`. The pre-existing `v1.0` tag points to
-commit `3e25683`, before the audit fixes. It has deliberately not been moved:
-the owner must explicitly approve moving this release tag to the audited main
-commit. No GitHub remote is configured and nothing has been pushed.
+commit `3e25683`, before the audit fixes and structure refactoring. It has
+deliberately not been moved. No GitHub remote is configured and nothing has
+been pushed.
 
 Before submitting, publish the repository, add its real GitHub URL, resolve the
 release-tag target, and create `DAA_Assignment3_name_surname_group.zip` with your
@@ -142,6 +145,7 @@ are separate from the 100-point core requirements.
 ## AI-use acknowledgement
 
 OpenAI Codex was used to help scaffold the project, implement and review the
-algorithms, write tests and documentation, and generate the plotting script.
+algorithms, simplify package structure and benchmark code, write tests and
+documentation, and generate the plotting script.
 All benchmark reference values are checked by executable code, and the submitted
 author is responsible for reviewing, understanding, and defending the solution.
