@@ -1,136 +1,214 @@
-# Assignment 3 Report: Graph Algorithms
+# Assignment 3: Graph Algorithms
 
-## 1. Design and complexity
+## 1. Design, measurement and complexity
 
-The project uses one weighted adjacency-list `Graph` for directed and undirected
-inputs. An undirected input edge is stored once in the edge list and twice in the
-adjacency lists. All counters are incremented at the point where work occurs;
-they are not reconstructed from formulas after a run. The benchmark creates a
-fresh `Random(42)` for every graph kind and rejects a row before writing the CSV
-if an algorithm disagrees with another algorithm or with the supplied reference.
+The project uses one adjacency-list Graph class for directed and undirected
+inputs. Vertices are 0..V-1 and weights are int; totals and distances are long.
+An undirected edge occurs once in the edge list and twice in adjacency lists.
+Self-loops, parallel edges, isolated vertices and disconnected graphs are supported.
+Both MST algorithms return a minimum spanning forest with its component count.
+Kosaraju uses explicit DFS frames in both passes, with no recursive calls.
 
-| Operation / algorithm | Time | Extra space | Justification |
-|---|---:|---:|---|
-| DSU `find` / `union` | amortized `O(alpha(V))` | `O(V)` | Path compression and union by size bound a sequence of operations by the inverse-Ackermann factor. |
-| Kruskal | `O(E log E + E alpha(V))` | `O(V + E)` | Sorting dominates; each examined edge performs a constant number of DSU operations. |
-| Prim (binary heap) | `O(E log E)` = `O(E log V)` | `O(V + E)` | Every adjacency entry is scanned and eligible edges enter a priority queue. |
-| Kosaraju | `O(V + E)` | `O(V + E)` | Two iterative DFS passes scan each directed edge once; the reversed graph also occupies `O(V + E)`. |
-| Kahn | `O(V + E)` | `O(V)` | In-degrees are built once, then every vertex is queued once and every edge is processed once. |
-| DAG shortest paths | `O(V + E)` | `O(V)` | A topological order is followed by exactly one relaxation of every edge. |
+The benchmark uses V = 1,000; 3,162; 10,000; 31,623; 100,000, each with
+E=4V and E=20V. Each configuration has three graph kinds, each starting with a
+new Random(42). The shuffle, tree, endpoint rejection and weight-generation order
+follow the PDF. The phrase "four generated graphs" in Deliverables conflicts with
+Section 6; we follow the ten configurations, reference table and 50-row requirement.
+"Dense" here means E=20V: both families still have E=Theta(V), not the
+E=Theta(V squared) density of a complete graph.
 
-`alpha(V)` is below 5 for any realistic input, so DSU operations are effectively
-constant-time in this experiment. Explicit DFS frame arrays replace the JVM call
-stack; the 100,000-vertex path test reaches depth 100,000 without a
-`StackOverflowError`. Self-loops, parallel edges, isolated vertices, and
-disconnected graphs are accepted. Both MST algorithms return a minimum spanning
-forest and its component count when the input is disconnected.
+### Counter definitions
+
+dsuOps counts find calls plus successful unions, including finds inside union.
+edgeScans counts Kruskal's selection loop, Prim's adjacency traversal, both
+Kosaraju DFS passes, Kahn's queue processing or the DAG relaxation pass.
+Following the exact 2E/E requirements, reversal, in-degree setup and validation
+are excluded from this counter. DAG topological sorting has separate temporary
+metrics: it is included in runtime, but not in the relaxation counter.
+comparisons counts weight-comparator calls in sort and PriorityQueue.
+maxDepth is the largest number of live DFS frames, not a number of operations.
+All counters are incremented at actual events, not derived from formulas.
+
+| Algorithm | Time | Extra space | Reason |
+|---|---|---|---|
+| DSU find / union | Amortized O(alpha(V)) | O(1) per call; O(V) stored | Path compression and union by size; makeSet costs O(V). |
+| Kruskal | O(V + E log(E+1) + E alpha(V)) | O(V+E) | Initialize DSU, sort all edges and scan until the tree is complete. |
+| Prim, lazy binary heap | O(V + E log(E+1)) | O(V+E) | Scan adjacency lists; up to E candidates enter and leave the heap. |
+| Kosaraju | O(V+E) | O(V+E) | Two DFS passes, reversed graph and O(V) stack frames. |
+| Kahn | O(V+E) | O(V) | Build in-degrees, enqueue each vertex once and process outgoing edges. |
+| DAG shortest paths | O(V+E) | O(V) | Topological sorting, then one relaxation pass. |
+
+Space excludes the input and includes output and temporary storage.
+For simple graphs, log E is O(log V); unrestricted parallel edges prevent
+assuming this equivalence for our general API. The V term covers edgeless
+graphs. DSU's inverse-Ackermann bound is amortized over operations; API-call
+counts alone do not measure parent-pointer work or prove that bound.
+
+<!-- pagebreak -->
 
 ## 2. Counters versus formulas
 
-The table summarizes all ten benchmark configurations. “Observed ratio” is the
-minimum-to-maximum range over the five sizes and two densities. Constant bounded
-ratios are the empirical signature of the stated class.
+Let W = dsuOps + edgeScans + comparisons. This is a work indicator, not every
+CPU instruction. We divide W by E log2 E for MST algorithms and by V+E for
+traversals. scripts/analyze_results.py validates results.csv and calculates
+results/analysis.json. Each column below is a measured size.
 
-| Algorithm | Counter / formula | Observed ratio | Interpretation |
-|---|---:|---:|---|
-| Kruskal | `(dsuOps + edgeScans + comparisons) / (E log2 E)` | `0.727..1.157` | Sorting plus almost-constant DSU work follows `E log E`. |
-| Prim | `(edgeScans + comparisons) / (E log2 V)` | `2.288..2.817` | Heap comparisons account for the logarithmic factor. |
-| Kosaraju | `edgeScans / (V + E)` | `1.600` sparse, `1.905` dense | The exact numerator is `2E`; density fixes the ratio. |
-| Kahn | `edgeScans / (V + E)` | `0.800` sparse, `0.952` dense | The exact numerator is `E`. |
-| DAG shortest paths | `edgeScans / (V + E)` | `0.800` sparse, `0.952` dense | The relaxation pass scans exactly `E` edges. |
+| Algorithm / density | 1,000 | 3,162 | 10,000 | 31,623 | 100,000 |
+|---|---:|---:|---:|---:|---:|
+| Kruskal / sparse | 1.147 | 1.157 | 1.108 | 1.029 | 0.946 |
+| Kruskal / dense | 0.958 | 0.899 | 0.828 | 0.775 | 0.727 |
+| Prim / sparse | 1.996 | 2.012 | 2.026 | 2.039 | 2.042 |
+| Prim / dense | 1.965 | 1.972 | 1.979 | 1.982 | 1.985 |
+| Kosaraju / sparse | 1.600 | 1.600 | 1.600 | 1.600 | 1.600 |
+| Kosaraju / dense | 1.905 | 1.905 | 1.905 | 1.905 | 1.905 |
+| Kahn and DAG / sparse | 0.800 | 0.800 | 0.800 | 0.800 | 0.800 |
+| Kahn and DAG / dense | 0.952 | 0.952 | 0.952 | 0.952 | 0.952 |
 
-Kruskal's `dsuOps/E` remains bounded: `2.290..2.748` on sparse graphs and
-`0.565..0.894` on dense graphs. Its examined-edge share is `77.1%..99.9%` for
-sparse graphs but only `20.7%..37.2%` for dense graphs, because a connected tree
-is completed long before all dense edges are reached. Prim always scans `2E`
-adjacency entries for an undirected graph. Kosaraju scans exactly `2E`; Kahn and
-the DAG relaxation each scan exactly `E`, matching the assignment's mandatory
-counter checks for every row.
+Prim's normalized work is almost constant. Traversal ratios are exactly constant
+at fixed density: Kosaraju scans 2E; Kahn and DAG relaxation scan E each.
+Kruskal's ratio decreases on larger graphs, so it is not exactly constant.
+Adaptive sorting, repeated weights from only 1,000 possible values and early
+termination affect these measurements. Results are consistent with the upper
+bounds; a finite experiment cannot prove an asymptotic bound or show that every
+input needs Theta(E log E) comparisons. Comparison counts can also depend on
+JDK collection implementations; reference answers and exact traversal counts do not.
 
-![Counted operations versus n](results/plots/operations-vs-n.png)
+Kruskal's dsuOps/E is 2.290, 2.519, 2.682, 2.732, 2.748 on sparse graphs;
+it is 0.580, 0.606, 0.565, 0.754, 0.894 on dense graphs.
+S scanned edges and U successful unions cause 2S+2U finds and U union counts,
+so dsuOps=2S+3U. For connected graphs U=V-1. We check this relation against
+measured counters; the algorithm still increments them at every actual call.
 
-![Edge scans per edge](results/plots/scans-per-edge.png)
+### Log-log slopes
 
-![Kruskal examined-edge share](results/plots/kruskal-edge-share.png)
+Ordinary least squares fits x=ln(V), y=ln(counter), separately by density:
+slope=sum((x-mean(x))(y-mean(y)))/sum((x-mean(x)) squared).
 
-### Log-log slope check
+| Algorithm | Scans: sparse / dense | W: sparse / dense |
+|---|---|---|
+| Kruskal | 1.055 / 1.119 | 1.052 / 1.022 |
+| Prim | 1.000 / 1.000 | 1.101 / 1.085 |
+| Kosaraju | 1.000 / 1.000 | 1.000 / 1.000 |
+| Kahn | 1.000 / 1.000 | 1.000 / 1.000 |
+| DAG shortest paths | 1.000 / 1.000 | 1.000 / 1.000 |
 
-Least-squares fits use `log(edgeScans)` against `log(n)` over the five sizes.
-Kosaraju, Kahn, DAG relaxation, and Prim all have slope `1.000` for both
-densities because `E` is a fixed multiple of `V`. Kruskal has slope `1.055` on
-sparse graphs and `1.119` on dense graphs. Its scan curve is slightly steeper
-because the fraction of sorted edges needed to finish the tree changes with
-size; its comparison counter separately captures the `E log E` sorting factor.
+The PDF links Kruskal's scan slope to sorting, but edgeScans excludes sorting
+comparisons. Its scan slope above 1 comes from the changing examined-edge share;
+S is always at most E. Sorting's comparison slopes are separately 1.055 (sparse)
+and 1.016 (dense). This distinction avoids attributing logarithmic sorting work
+to a selection counter bounded by E.
 
-## 3. Correctness arguments
+<!-- pagebreak -->
 
-### MST and the cut property
+## 3. Correctness and algorithm choice
 
-Consider any cut that separates the vertices into two sets and the lightest edge
-crossing that cut. The cut property says that this edge is safe: some minimum
-spanning forest contains it, because replacing a heavier crossing edge on the
-corresponding cycle cannot increase total weight. Kruskal's DSU components define
-such a cut whenever it considers an edge whose endpoints are in different sets.
-Therefore every edge accepted by Kruskal can extend some optimal forest. Prim's
-visited and unvisited vertices define a cut, and the priority queue selects the
-lightest eligible crossing edge. Thus every Prim step is safe for the same reason,
-and induction over accepted edges proves both algorithms produce a minimum
-spanning tree in each connected component. The benchmark additionally checks
-their total weights for all generated graphs, while randomized tests check 100
-smaller connected graphs.
+### Minimum spanning forests: cut property
 
-### One-pass shortest paths in a DAG
+Assume the accepted edges form a forest F contained in an optimal forest T.
+Choose a cut that no edge of F crosses and a minimum-weight edge e across it.
+If e is absent from T, adding it creates a cycle containing another crossing
+edge f, and replacing f by e cannot increase total weight.
+This exchange preserves F, so e safely extends an optimal solution even with
+equal or negative weights.
+Kruskal applies this argument to a DSU component by processing edges in
+nondecreasing weight order and rejecting edges within the same component.
+Prim applies it to the visited set because its cheapest non-stale heap entry
+is a lightest crossing edge.
+Repeating these safe steps in every component gives a minimum spanning forest
+with exactly V-C edges for C components.
 
-Add a virtual super-source with a zero-weight edge to every in-degree-zero vertex;
-initializing those distances to zero is exactly the same operation without storing
-the extra vertex. In a topological order, every predecessor of a vertex appears
-before that vertex. Assume inductively that all vertices before position `i` have
-their final shortest distances when processed. Every possible path into the
-vertex at position `i` ends with an edge from one of those already-final
-predecessors, so all candidates have already been relaxed when its turn begins.
-Its distance is therefore final, and relaxing its outgoing edges establishes the
-induction hypothesis for later vertices. After one pass, every reachable vertex
-has its shortest distance, and `parent[]` records a realizing path. Negative
-weights are safe because a DAG has no cycle to revisit; in a general graph a
-negative cycle could lower a distance indefinitely, invalidating a one-pass
-argument.
+### DAG shortest paths: induction on topological order
 
-## 4. Which algorithm when
+Initialize every in-degree-zero vertex to distance zero, equivalent to adding
+a virtual source with zero-weight edges to all such vertices.
+Every vertex in a finite DAG is reachable from a source because following
+predecessors must terminate without repeating a vertex.
+The source distances form the base case of induction on topological order.
+Assume all vertices before the current vertex have their final shortest distances.
+Every incoming edge starts at an earlier vertex, so all possible last edges of
+paths to the current vertex have already been relaxed.
+Its distance is therefore final, and relaxing outgoing edges preserves the
+induction hypothesis while parents record a realizing path.
+Negative weights are safe because no directed cycle exists; a general graph
+may have a negative cycle and no finite shortest walk, while even without
+negative cycles it may need repeated relaxation.
+
+### Which algorithm when
 
 | Situation | Choice | Reason |
 |---|---|---|
-| Undirected, edge list already available; sparse or moderate density | Kruskal | Simple global sort plus DSU; easy to stop after `V-1` accepted edges. |
-| Undirected, adjacency list; very dense connected graph | Prim | Grows from vertices directly and avoids keeping a second sorted edge order; an `O(V^2)` array variant may beat a heap on truly dense matrices. |
-| Need connected components under incremental undirected unions | DSU | Near-constant queries; unlike DFS, it updates without retraversing the graph. |
-| Directed graph, cycles possible; need all mutual-reachability groups | Kosaraju | Works on arbitrary directed graphs in linear time and reports SCCs/deadlocks. |
-| Directed dependencies, must decide whether a cycle exists | Kahn | Returns a valid order when acyclic and explicitly reports a cycle otherwise. |
-| Weighted DAG, including negative edges | DAG shortest paths | Linear-time relaxation; no Bellman-Ford repetitions are needed. |
-| General weighted graph with negative edges/cycles possible | Bellman-Ford, not this DAG method | Topological order may not exist, and negative cycles require detection. |
+| Undirected, sparse, edge list | Kruskal | Sorting and DSU match the representation. |
+| Undirected, adjacency list | Prim | Grows using outgoing edges without globally sorting them. |
+| Undirected, truly dense matrix | Array-based Prim | O(V squared) avoids heap costs; not implemented here. |
+| E=20V benchmark multigraph | Measured Kruskal implementation | Fewer weight comparisons and selection scans than lazy Prim on these data. |
+| Incremental undirected connectivity | DSU | Near-constant union and connectivity queries. |
+| Directed, cycles possible | Kosaraju | Finds mutual-reachability groups in O(V+E). |
+| Directed dependencies | Kahn | Gives an order or detects a cycle when fewer than V vertices leave the queue. |
+| Weighted DAG, negative edges allowed | DAG shortest paths | One relaxation pass after topological sorting. |
+| General graph with negative weights | Bellman-Ford | Repeated relaxation and reachable negative-cycle detection. |
 
-Representation matters as much as density. Kruskal naturally consumes an edge
-list, while Prim naturally consumes adjacency lists. Traversals, Kahn, Kosaraju,
-and DAG relaxation should use adjacency lists because they need outgoing edges by
-vertex. A topological algorithm must never be used merely because the input looks
-“mostly acyclic”: Kahn's cycle result must be checked first.
+Density alone does not make lazy heap Prim better: it may hold O(E) candidates.
+An indexed heap with decrease-key has different memory and operation counts.
+Both implemented MST methods support disconnected graphs. A singleton SCC
+with a self-loop is also a cycle, so SCC size alone cannot detect every deadlock.
+Bonus Tarjan and condensation/critical path algorithms are not implemented.
 
-## 5. Results and timing
+<!-- pagebreak -->
 
-All ten reference triples match exactly, including the largest row:
-MST `3,056,681`, SCC count `1`, and DAG distance sum `23,512,087` at
-`n=100,000`, `m=2,000,000`. `results/results.csv` contains 50 data rows with the
-requested columns. Median times generally grew with the counters, but small-case
-timings were noisy: for example, dense Kahn grew from about `1.2 ms` to `58.5 ms`,
-while dense Prim grew from about `8.2 ms` to `1,972.8 ms`. Those values describe
-this particular JVM and machine only; JIT compilation, allocation, background
-load, and hardware change them. The operation counters and exact reference
-results are therefore the primary evidence, while wall-clock time is only a
-secondary practical observation.
+## 4. Operations and scans
 
-## 6. Validation summary
+![Counted operations versus vertices](results/plots/operations-vs-n.png)
 
-The JUnit suite contains 11 tests. It cross-checks DSU with a simple reference,
-MST weights between two independent algorithms, SCC membership with BFS-based
-reachability, DAG distances with Bellman-Ford including negative weights, cycle
-detection, topological-order validity, input parsing, disconnected forests, and
-100,000-vertex stack safety. The benchmark repeats result and counter checks on
-each timed run and refuses to write a misleading CSV when a check fails.
+Figure 1. Each algorithm and density has a line on log-log axes.
+W counts selection/traversal scans, DSU calls and weight comparisons;
+maximum stack depth is excluded. Kahn and DAG curves overlap because their
+recorded phases scan E edges, although their complete runtimes differ.
+
+![Edge scans divided by input edges](results/plots/scans-per-edge.png)
+
+Figure 2. Prim and Kosaraju have edgeScans/E=2 for different reasons:
+Prim sees two adjacency entries per undirected edge; Kosaraju runs two DFS passes.
+Kahn and DAG relaxation have ratio 1. Overlapping curves are labelled.
+Flat lines confirm linear edge processing, but exclude heap comparisons and setup.
+
+<!-- pagebreak -->
+
+## 5. Results, edge share and timing
+
+![Share of edges examined by Kruskal](results/plots/kruskal-edge-share.png)
+
+Figure 3. Kruskal examines 77.05% to 99.92% of sparse edges versus 20.74% to
+37.18% of dense edges. It still sorts all E edges: stopping early saves DSU
+work but does not avoid sorting. Prim scans all 2E adjacency entries and has
+more heap comparisons in these runs.
+
+| V | E | MST weight (both) | SCC count | Sum of DAG distances |
+|---:|---:|---:|---:|---:|
+| 1,000 | 4,000 | 147,970 | 27 | 396,274 |
+| 1,000 | 20,000 | 30,363 | 1 | 252,411 |
+| 3,162 | 12,648 | 468,911 | 137 | 1,271,911 |
+| 3,162 | 63,240 | 97,589 | 1 | 723,157 |
+| 10,000 | 40,000 | 1,486,139 | 373 | 3,941,828 |
+| 10,000 | 200,000 | 309,550 | 1 | 2,381,342 |
+| 31,623 | 126,492 | 4,715,515 | 1,188 | 12,551,891 |
+| 31,623 | 632,460 | 968,517 | 1 | 7,376,612 |
+| 100,000 | 400,000 | 15,012,094 | 3,923 | 40,096,539 |
+| 100,000 | 2,000,000 | 3,056,681 | 1 | 23,512,087 |
+
+All reference values and scan checks passed on 23 October 2026 using OpenJDK
+21.0.12.1, Linux amd64, maximum heap 3,928 MiB. Each CSV time is the median
+of five algorithm runs; runs.csv preserves all 250 raw samples.
+Generation, validation and aggregation are outside the timer; initialization,
+reversal and internal topological sorting are inside. No separate warm-up is
+used, so JIT effects can dominate small cases: sparse Kahn took 1.532 ms at
+V=1,000 but 0.695 ms at V=3,162. At the largest dense input, Kruskal took
+586.893 ms, Prim 1,791.492 ms, Kosaraju 516.236 ms, Kahn 105.236 ms and
+DAG shortest paths 193.222 ms. Hardware, JVM, GC and background load change
+times; counters are the main evidence, and timing cannot establish a universal winner.
+
+All 37 JUnit cases passed: randomized DSU, 100 connected MST comparisons,
+100 exhaustive small-forest oracles, SCC versus BFS up to 200 vertices,
+topological and cycle checks, 100 DAG/Bellman-Ford comparisons with full path
+validation, malformed input and boundary cases. A 100,000-vertex path and cycle
+each completed with explicit depth 100,000. The benchmark checks every run's
+result and all counters; Python independently checks the CSV and medians.

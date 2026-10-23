@@ -12,6 +12,8 @@ public final class DagShortestPaths {
         if (!graph.isDirected()) {
             throw new IllegalArgumentException("DAG shortest paths require a directed graph");
         }
+        // The assignment counts only the relaxation pass for this CSV row.
+        // Topological sorting is still included in the full algorithm's runtime.
         TopologicalResult topological = KahnTopologicalSort.sort(graph, new Metrics());
         if (topological.hasCycle()) {
             throw new IllegalArgumentException("graph contains a directed cycle");
