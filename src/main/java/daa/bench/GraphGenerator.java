@@ -4,7 +4,6 @@ import daa.graph.Graph;
 
 import java.util.Random;
 
-/** The assignment's deterministic Random(42) graph generators. */
 public final class GraphGenerator {
     public static final long SEED = 42L;
 

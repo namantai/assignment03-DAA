@@ -10,10 +10,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.StringTokenizer;
 
-/**
- * A weighted adjacency-list graph. Vertices are numbered from 0 to n - 1.
- * The same type supports directed and undirected graphs.
- */
 public final class Graph {
     public record Edge(int from, int to, int weight) { }
     public record Arc(int to, int weight) { }

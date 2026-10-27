@@ -6,7 +6,6 @@ import daa.metrics.Metrics;
 import java.util.Arrays;
 import java.util.List;
 
-/** Stack-safe Kosaraju implementation: both DFS passes use explicit frame stacks. */
 public final class KosarajuScc {
     private KosarajuScc() { }
 

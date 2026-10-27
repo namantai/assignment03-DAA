@@ -1,13 +1,5 @@
 package daa.metrics;
 
-/**
- * Mutable counters updated inside the measured algorithm phase.
- * edgeScans counts Kruskal's selection loop, Prim's adjacency traversal,
- * both Kosaraju DFS passes, Kahn's queue processing, or DAG relaxation.
- * Graph construction, reversal, in-degree setup and validation are excluded.
- * comparisons counts weight-comparator calls in sorting and the priority queue;
- * maxDepth is the maximum live DFS frame count, not a cumulative operation count.
- */
 public final class Metrics {
     private long findCalls;
     private long successfulUnions;

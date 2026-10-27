@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
-/** Runs the deterministic 50-row benchmark and fails on any reference mismatch. */
 public final class BenchmarkRunner {
     private static final int[] SIZES = {1_000, 3_162, 10_000, 31_623, 100_000};
     private static final int[] DENSITIES = {4, 20};
@@ -109,7 +108,6 @@ public final class BenchmarkRunner {
         for (int run = 0; run < RUNS; run++) {
             Metrics runMetrics = new Metrics();
             long value;
-            // Stop each timer before checking or summarizing the result.
             if (algorithm.equals("Kruskal")) {
                 long start = System.nanoTime();
                 MstResult result = KruskalMst.compute(graph, runMetrics);

@@ -4,7 +4,6 @@ import daa.metrics.Metrics;
 
 import java.util.Arrays;
 
-/** DSU with both union by size and path compression. */
 public final class DisjointSetUnion {
     private final int[] parent;
     private final int[] size;
